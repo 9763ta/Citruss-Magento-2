@@ -1,0 +1,52 @@
+# Set Magento to maintenance mode
+sudo -u www-data php bin/magento maintenance:enable
+
+# Production database backup.
+
+# Get all new branches and sync patches
+git fetch --all
+
+# Sync pathes
+rsync -ravz patches/vendor/* vendor/
+
+# Change ownership
+chown -R www-data:www-data ../magento2
+
+# Get updated branch code
+sudo git pull origin amazon-payment-feature
+
+# Install new modules & database schema update
+sudo -u www-data php bin/magento setup:upgrade
+
+# Enable newly added modules
+sudo -u www-data php bin/magento module:enable Amazonpaymentservices_Fort
+sudo -u www-data php bin/magento module:enable Tabby_Checkout
+sudo -u www-data php bin/magento module:enable Ctv_Checkout
+sudo -u www-data php bin/magento module:enable Ctv_ReorderIssue
+
+# Check if any module is disabled in list
+sudo -u www-data php bin/magento module:status
+
+# Run Magento compilation of classes
+sudo -u www-data php bin/magento setup:di:compile
+
+# Remove existing admin theme HTML & assets
+rm -rf pub/static/adminhtml
+
+# Generate new static content for Admin
+sudo -u www-data php bin/magento setup:static-content:deploy --area=adminhtml en_US en_GB
+
+# Remove existing front theme HTML & assets
+rm -rf pub/static/frontend
+
+# Generate new static content for Front end
+sudo -u www-data php bin/magento setup:static-content:deploy --area=frontend --theme=Ctv/westylefashion en_GB ar_SA
+
+# Update translation files
+magepack bundle
+
+# Clean Magento cache
+sudo /var/scripts/clean_m2_cache.sh
+
+# Disable maintenance mode
+sudo -u www-data php bin/magento maintenance:disable
